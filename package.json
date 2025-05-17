@@ -1,27 +1,42 @@
 {
-  "name": "workvow",
+  "name": "sales-commitment-reporting-system",
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
   },
   "dependencies": {
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "next": "15.3.1"
+    "@hookform/resolvers": "^3.10.0",
+    "chart.js": "^4.4.9",
+    "date-fns": "^2.30.0",
+    "firebase": "^10.14.1",
+    "next": "^14.0.3",
+    "react": "^18.2.0",
+    "react-chartjs-2": "^5.3.0",
+    "react-datepicker": "^4.23.0",
+    "react-dom": "^18.2.0",
+    "react-firebase-hooks": "^5.1.1",
+    "react-hook-form": "^7.56.1",
+    "react-icons": "^4.12.0",
+    "react-toastify": "^9.1.3",
+    "swr": "^2.2.4",
+    "tailwind-merge": "^2.6.0",
+    "xlsx": "^0.18.5",
+    "zod": "^3.24.3"
   },
   "devDependencies": {
-    "typescript": "^5",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "@tailwindcss/postcss": "^4",
-    "tailwindcss": "^4",
-    "eslint": "^9",
-    "eslint-config-next": "15.3.1",
-    "@eslint/eslintrc": "^3"
+    "@types/node": "^20.9.2",
+    "@types/react": "^18.2.37",
+    "@types/react-datepicker": "^4.19.3",
+    "@types/react-dom": "^18.2.15",
+    "autoprefixer": "^10.4.16",
+    "eslint": "^8.54.0",
+    "eslint-config-next": "^14.0.3",
+    "postcss": "^8.4.31",
+    "tailwindcss": "^3.3.5",
+    "typescript": "^5.2.2"
   }
 }

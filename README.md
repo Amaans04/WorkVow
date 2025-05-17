@@ -1,36 +1,172 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Sales Commitment and Reporting System
 
-## Getting Started
+A full-stack application for sales teams to manage daily commitments, track performance, and generate reports.
 
-First, run the development server:
+## Features
+
+- **Authentication System** - Role-based access control with Employee, Manager, and Admin roles
+- **Dashboard** - Overview of performance metrics, leaderboard, and company announcements
+- **Morning Commitment** - Daily goal setting for calls and expected closures
+- **Evening Report** - End-of-day reporting with actual calls made and prospects secured
+- **Analytics** - Track performance metrics like calls, meetings, and revenue
+- **Management Panel** - For managers and admins to view team performance
+- **Leaderboard** - Showcase top performers with achievement badges
+
+## Tech Stack
+
+- **Frontend**: React.js, Next.js, Tailwind CSS
+- **Backend**: Firebase (Firestore, Authentication)
+- **State Management**: React Context API
+- **Forms**: React Hook Form
+- **Data Visualization**: Chart.js / React-ChartJS-2
+- **Icons**: React Icons (Feather)
+- **Export**: SheetJS (xlsx)
+- **Notifications**: React-Toastify (client-side) & Firebase Cloud Messaging (push)
+
+## Project Structure
+
+```
+├── public/                # Static assets
+├── src/
+│   ├── app/               # Next.js app directory (routes)
+│   │   ├── dashboard/     # Dashboard pages
+│   │   ├── commitments/   # Morning commitment pages
+│   │   ├── reports/       # Evening report pages
+│   │   ├── admin/         # Admin panel pages
+│   │   ├── login/         # Authentication pages
+│   │   └── ...
+│   ├── components/        # Reusable components
+│   │   ├── ui/            # UI components (buttons, inputs, etc.)
+│   │   ├── layout/        # Layout components
+│   │   ├── dashboard/     # Dashboard-specific components
+│   │   └── ...
+│   ├── context/           # React Context providers
+│   │   ├── AuthContext.tsx    # Authentication context
+│   │   └── ...
+│   ├── lib/               # Utility functions and libraries
+│   │   ├── firebase.ts    # Firebase configuration
+│   │   └── ...
+│   └── types/             # TypeScript type definitions
+└── ...
+```
+
+## Local Development Setup
+
+### Prerequisites
+
+- Node.js (v16+)
+- npm or yarn
+- Firebase account
+
+### Setup Steps
+
+1. **Clone the repository**
+
+```bash
+git clone https://github.com/yourusername/sales-commitment-reporting-system.git
+cd sales-commitment-reporting-system
+```
+
+2. **Install dependencies**
+
+```bash
+npm install
+# or
+yarn
+```
+
+3. **Create a Firebase project**
+
+- Go to [Firebase Console](https://console.firebase.google.com/)
+- Create a new project
+- Set up Authentication (Email/Password)
+- Create a Firestore database
+
+4. **Set up environment variables**
+
+Create a `.env.local` file in the root directory with the following variables:
+
+```
+NEXT_PUBLIC_FIREBASE_API_KEY=your-api-key
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your-auth-domain
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=your-project-id
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your-storage-bucket
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your-messaging-sender-id
+NEXT_PUBLIC_FIREBASE_APP_ID=your-app-id
+NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=your-measurement-id
+NEXT_PUBLIC_USE_FIREBASE_EMULATOR=false
+```
+
+5. **Set up Firebase Emulators (optional for local development)**
+
+```bash
+npm install -g firebase-tools
+firebase login
+firebase init emulators
+```
+
+Select Authentication and Firestore emulators during setup.
+
+6. **Run the development server**
 
 ```bash
 npm run dev
 # or
 yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+7. **Access the application**
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Deployment
 
-## Learn More
+1. **Build the application**
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm run build
+# or
+yarn build
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+2. **Deploy to hosting service**
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+You can deploy to various services:
 
-## Deploy on Vercel
+- Vercel (recommended for Next.js):
+  ```bash
+  npm install -g vercel
+  vercel
+  ```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- Firebase Hosting:
+  ```bash
+  firebase deploy
+  ```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## License
+
+MIT
+
+## Support
+
+For any questions or issues, please open an issue in the repository or contact support@yourdomain.com.
+
+## Troubleshooting
+
+### Firebase Emulator Connection Issues
+
+If you're experiencing connection errors with Firebase emulators, add this to your `.env.local` file:
+
+```
+NEXT_PUBLIC_USE_FIREBASE_EMULATOR=false
+```
+
+Set to `true` only when you have emulators running. See `SETUP_INSTRUCTIONS.md` for details.
+
+### Form Field Autocomplete Warnings
+
+If you see browser warnings about form fields missing autocomplete attributes, these have been fixed in the latest version. Make sure your code includes the `autoComplete` attribute on password fields:
+
+- For login forms: `autoComplete="current-password"`
+- For registration forms: `autoComplete="new-password"`

@@ -1,0 +1,122 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    function isManager() {
+      return isAuthenticated() && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'manager';
+    }
+    
+    function isEmployee() {
+      return isAuthenticated() && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'employee';
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isManagerOf(userId) {
+      return isAuthenticated() && 
+        get(/databases/$(database)/documents/users/$(userId)).data.manager_id == request.auth.uid;
+    }
+    
+    // Users collection rules
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (isOwner(userId) || isAdmin() || isManagerOf(userId));
+      allow create: if isAdmin();
+      allow update: if isAdmin() || (isOwner(userId) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'manager_id']));
+      allow delete: if isAdmin();
+    }
+    
+    // Commitments collection rules
+    match /commitments/{commitmentId} {
+      allow read: if isAuthenticated() && (isOwner(resource.data.user_id) || isAdmin() || isManagerOf(resource.data.user_id));
+      allow create: if isAuthenticated() && isOwner(request.resource.data.user_id);
+      allow update: if isAuthenticated() && isOwner(resource.data.user_id);
+      allow delete: if isAdmin();
+    }
+    
+    // Daily Reports collection rules
+    match /daily_reports/{reportId} {
+      allow read: if isAuthenticated() && (isOwner(resource.data.user_id) || isAdmin() || isManagerOf(resource.data.user_id));
+      allow create: if isAuthenticated() && isOwner(request.resource.data.user_id);
+      allow update: if isAuthenticated() && isOwner(resource.data.user_id);
+      allow delete: if isAdmin();
+    }
+    
+    // Prospects collection rules
+    match /prospects/{prospectId} {
+      allow read: if isAuthenticated() && (isOwner(resource.data.user_id) || isAdmin() || isManagerOf(resource.data.user_id));
+      allow create: if isAuthenticated() && isOwner(request.resource.data.user_id);
+      allow update: if isAuthenticated() && isOwner(resource.data.user_id);
+      allow delete: if isAdmin();
+    }
+    
+    // Meetings collection rules
+    match /meetings/{meetingId} {
+      allow read: if isAuthenticated() && (
+        isOwner(resource.data.user_id) || 
+        isAdmin() || 
+        isManagerOf(resource.data.user_id)
+      );
+      allow create: if isAuthenticated() && isOwner(request.resource.data.user_id);
+      allow update: if isAuthenticated() && isOwner(resource.data.user_id);
+      allow delete: if isAdmin();
+    }
+    
+    // Closures collection rules
+    match /closures/{closureId} {
+      allow read: if isAuthenticated() && (
+        isOwner(resource.data.user_id) || 
+        isAdmin() || 
+        isManagerOf(resource.data.user_id)
+      );
+      allow create: if isAuthenticated() && isOwner(request.resource.data.user_id);
+      allow update: if isAuthenticated() && isOwner(resource.data.user_id);
+      allow delete: if isAdmin();
+    }
+    
+    // Followups collection rules
+    match /followups/{followupId} {
+      allow read: if isAuthenticated() && (
+        isOwner(resource.data.user_id) || 
+        isAdmin() || 
+        isManagerOf(resource.data.user_id)
+      );
+      allow create: if isAuthenticated() && isOwner(request.resource.data.user_id);
+      allow update: if isAuthenticated() && isOwner(resource.data.user_id);
+      allow delete: if isAdmin();
+    }
+    
+    // Performance Scores collection rules
+    match /performance_scores/{scoreId} {
+      allow read: if isAuthenticated() && (
+        isOwner(resource.data.user_id) || 
+        isAdmin() || 
+        isManagerOf(resource.data.user_id)
+      );
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+    
+    // Targets collection rules
+    match /targets/{targetId} {
+      allow read: if isAuthenticated();
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+  }
+} 
