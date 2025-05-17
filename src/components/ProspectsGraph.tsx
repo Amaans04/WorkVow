@@ -42,7 +42,8 @@ interface DailyStats {
 }
 
 export default function ProspectsGraph() {
-  const { userData } = useAuth();
+  const auth = useAuth();
+  const userData = auth?.userData;
   const [stats, setStats] = useState<DailyStats[]>([]);
   const [loading, setLoading] = useState(true);
 

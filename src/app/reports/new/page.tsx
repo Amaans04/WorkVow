@@ -66,7 +66,8 @@ interface Commitment {
 
 export default function NewReportPage() {
   const router = useRouter();
-  const { userData } = useAuth();
+  const auth = useAuth();
+  const userData = auth?.userData;
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [todayCommitment, setTodayCommitment] = useState<Commitment | null>(null);
   const [isLoadingCommitment, setIsLoadingCommitment] = useState(true);
