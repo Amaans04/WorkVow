@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, Timestamp, orderBy, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
 import Card from '@/components/ui/Card';
@@ -18,6 +18,7 @@ import {
   ChartOptions,
   ChartData
 } from 'chart.js';
+import { Select } from '@/components/ui/Select';
 
 // Register all required Chart.js components
 ChartJS.register(
@@ -39,60 +40,116 @@ interface DailyStats {
   date: string;
   prospects: number;
   converted: number;
+  dailyProspects: number;
+  dailyConverted: number;
 }
+
+type DateRange = 'week' | 'month' | 'all';
 
 export default function ProspectsGraph() {
   const auth = useAuth();
   const userData = auth?.userData;
   const [stats, setStats] = useState<DailyStats[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dateRange, setDateRange] = useState<DateRange>('week');
+  const [userCreationDate, setUserCreationDate] = useState<Date | null>(null);
 
   useEffect(() => {
     if (!userData) return;
-    fetchProspectStats();
+    fetchUserCreationDate();
   }, [userData]);
 
-  const fetchProspectStats = async () => {
+  useEffect(() => {
+    if (!userData || !userCreationDate) return;
+    fetchProspectStats();
+  }, [userData, dateRange, userCreationDate]);
+
+  const fetchUserCreationDate = async () => {
     if (!userData) return;
+
+    try {
+      const userDoc = await getDoc(doc(db, 'users', userData.uid));
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        setUserCreationDate(userData.createdAt?.toDate() || new Date());
+      }
+    } catch (error) {
+      console.error('Error fetching user creation date:', error);
+      setUserCreationDate(new Date()); // Fallback to current date if error
+    }
+  };
+
+  const fetchProspectStats = async () => {
+    if (!userData || !userCreationDate) return;
 
     try {
       setLoading(true);
       
-      // Get all prospects from the new path
-      const prospectsRef = collection(db, `users/${userData.uid}/prospects`);
-      const prospectsQuery = query(prospectsRef, where('dateAdded', '>=', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000))); // Last 30 days
-      const prospectsSnapshot = await getDocs(prospectsQuery);
+      // Calculate start date based on selected range
+      const startDate = new Date();
+      switch (dateRange) {
+        case 'week':
+          startDate.setDate(startDate.getDate() - 7);
+          break;
+        case 'month':
+          startDate.setDate(startDate.getDate() - 30);
+          break;
+        case 'all':
+          startDate.setTime(userCreationDate.getTime()); // Use user creation date
+          break;
+      }
       
-      const prospectData: ProspectData[] = [];
+      // Get daily reports
+      const reportsRef = collection(db, `users/${userData.uid}/reports/daily/entries`);
+      const reportsQuery = query(
+        reportsRef,
+        where('date', '>=', startDate),
+        orderBy('date', 'asc')
+      );
+      const reportsSnapshot = await getDocs(reportsQuery);
       
-      prospectsSnapshot.forEach(doc => {
-        const data = doc.data();
-        prospectData.push({
-          dateAdded: data.dateAdded,
-          status: data.status
-        });
-      });
-
       // Group by date and calculate stats
       const statsMap = new Map<string, DailyStats>();
+      let cumulativeProspects = 0;
+      let cumulativeConverted = 0;
       
-      prospectData.forEach(prospect => {
-        const date = prospect.dateAdded.toDate().toISOString().split('T')[0];
-        
-        if (!statsMap.has(date)) {
-          statsMap.set(date, {
-            date,
-            prospects: 0,
-            converted: 0
-          });
+      // Initialize all dates between start and end with zero values
+      const currentDate = new Date(startDate);
+      const endDate = new Date();
+      while (currentDate <= endDate) {
+        const dateStr = currentDate.toISOString().split('T')[0];
+        statsMap.set(dateStr, {
+          date: dateStr,
+          prospects: 0,
+          converted: 0,
+          dailyProspects: 0,
+          dailyConverted: 0
+        });
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+      
+      // Process reports
+      reportsSnapshot.forEach(doc => {
+        const data = doc.data();
+        const date = data.date.toDate().toISOString().split('T')[0];
+        const stats = statsMap.get(date);
+        if (stats) {
+          stats.dailyProspects = data.totalProspects || 0;
+          stats.dailyConverted = data.convertedProspects || 0;
         }
-        
+      });
+      
+      // Calculate cumulative stats
+      const sortedDates = Array.from(statsMap.keys()).sort();
+      sortedDates.forEach(date => {
         const stats = statsMap.get(date)!;
-        stats.prospects++;
-        
-        if (prospect.status === 'converted') {
-          stats.converted++;
+        // Only add to cumulative if it's not today
+        if (date !== endDate.toISOString().split('T')[0]) {
+          cumulativeProspects += stats.dailyProspects;
+          cumulativeConverted += stats.dailyConverted;
         }
+        stats.prospects = cumulativeProspects;
+        stats.converted = cumulativeConverted;
       });
 
       // Convert map to array and sort by date
@@ -111,18 +168,22 @@ export default function ProspectsGraph() {
     labels: stats.map(stat => stat.date),
     datasets: [
       {
-        label: 'Prospects Added',
+        label: 'Total Prospects',
         data: stats.map(stat => stat.prospects),
         borderColor: 'rgb(59, 130, 246)',
         backgroundColor: 'rgba(59, 130, 246, 0.5)',
-        tension: 0.1
+        tension: 0.1,
+        pointRadius: 4,
+        pointHoverRadius: 6
       },
       {
-        label: 'Prospects Converted',
+        label: 'Converted Prospects',
         data: stats.map(stat => stat.converted),
         borderColor: 'rgb(34, 197, 94)',
         backgroundColor: 'rgba(34, 197, 94, 0.5)',
-        tension: 0.1
+        tension: 0.1,
+        pointRadius: 4,
+        pointHoverRadius: 6
       }
     ]
   };
@@ -136,7 +197,16 @@ export default function ProspectsGraph() {
       },
       title: {
         display: true,
-        text: 'Prospects vs Conversions (Last 30 Days)'
+        text: 'Prospects Progress'
+      },
+      tooltip: {
+        callbacks: {
+          label: function(context) {
+            const label = context.dataset.label || '';
+            const value = context.parsed.y;
+            return `${label}: ${value}`;
+          }
+        }
       }
     },
     scales: {
@@ -144,6 +214,12 @@ export default function ProspectsGraph() {
         beginAtZero: true,
         ticks: {
           stepSize: 1
+        }
+      },
+      x: {
+        ticks: {
+          maxRotation: 45,
+          minRotation: 45
         }
       }
     }
@@ -161,8 +237,22 @@ export default function ProspectsGraph() {
 
   return (
     <Card>
-      <div className="p-4 h-64">
-        <Line data={chartData} options={chartOptions} />
+      <div className="p-4">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-lg font-medium">Prospects Progress</h2>
+          <Select
+            value={dateRange}
+            onChange={(e) => setDateRange(e.target.value as DateRange)}
+            className="w-40"
+          >
+            <option value="week">Last 7 Days</option>
+            <option value="month">Last 30 Days</option>
+            <option value="all">All Time</option>
+          </Select>
+        </div>
+        <div className="h-64">
+          <Line data={chartData} options={chartOptions} />
+        </div>
       </div>
     </Card>
   );

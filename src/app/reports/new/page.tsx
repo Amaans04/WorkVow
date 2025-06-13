@@ -49,6 +49,8 @@ interface ReportFormValues {
   feedback: string;
   meetingOutcomes: MeetingOutcome[];
   closures: Closure[];
+  totalProspects: number;
+  convertedProspects: number;
 }
 
 interface Commitment {
@@ -74,6 +76,7 @@ export default function NewReportPage() {
   const [existingReport, setExistingReport] = useState<DocumentData | null>(null);
   const [formattedDate, setFormattedDate] = useState('');
   const [todayDateString, setTodayDateString] = useState('');
+  const [prospects, setProspects] = useState<Array<{ id: string; name: string; dateAdded?: Timestamp }>>([]);
   
   const { 
     register, 
@@ -91,7 +94,9 @@ export default function NewReportPage() {
       totalExpectedRevenue: 0,
       feedback: '',
       meetingOutcomes: [],
-      closures: []
+      closures: [],
+      totalProspects: 0,
+      convertedProspects: 0
     }
   });
   
@@ -116,6 +121,19 @@ export default function NewReportPage() {
   // Watch closures to calculate total revenue
   const closures = watch('closures');
   const totalRevenue = closures?.reduce((sum, closure) => sum + (closure.amount || 0), 0) || 0;
+
+  // Watch for changes in prospects and meeting outcomes to update totals
+  useEffect(() => {
+    const prospects = watch("prospects");
+    const meetingOutcomes = watch("meetingOutcomes");
+    
+    // Update total prospects
+    setValue("totalProspects", prospects.length);
+    
+    // Update converted prospects based on meeting outcomes
+    const converted = meetingOutcomes.filter(outcome => outcome.outcome === 'converted').length;
+    setValue("convertedProspects", converted);
+  }, [watch("prospects"), watch("meetingOutcomes"), setValue]);
 
   // Helper function for getting date strings
   const getDateStrings = () => {
@@ -199,6 +217,46 @@ export default function NewReportPage() {
 
     fetchData();
   }, [userData, setValue]);
+
+  // Fetch prospects for the user
+  useEffect(() => {
+    if (!auth?.userData) return;
+    const userData = auth.userData;
+
+    const fetchProspects = async () => {
+      try {
+        // Get all prospects from the main prospects collection
+        const prospectsRef = collection(db, `users/${userData.uid}/prospects`);
+        const prospectsQuery = query(prospectsRef, where('status', '==', 'pending'));
+        const prospectsSnapshot = await getDocs(prospectsQuery);
+        
+        const prospectsData: Array<{ id: string; name: string; dateAdded?: Timestamp }> = [];
+        
+        prospectsSnapshot.forEach(doc => {
+          const data = doc.data();
+          prospectsData.push({
+            id: doc.id,
+            name: data.name,
+            dateAdded: data.dateAdded
+          });
+        });
+        
+        // Sort prospects by date added (most recent first)
+        prospectsData.sort((a, b) => {
+          const dateA = a.dateAdded?.toDate() || new Date(0);
+          const dateB = b.dateAdded?.toDate() || new Date(0);
+          return dateB.getTime() - dateA.getTime();
+        });
+        
+        setProspects(prospectsData);
+      } catch (error) {
+        console.error('Error fetching prospects:', error);
+        toast.error('Failed to load prospects');
+      }
+    };
+
+    fetchProspects();
+  }, [auth?.userData]);
 
   // Get week number
   const getWeekNumber = (date: Date): number => {
@@ -294,6 +352,8 @@ export default function NewReportPage() {
           callsTarget: todayCommitment.target,
           completion: (data.callsMade / todayCommitment.target) * 100,
           prospectsCount: data.prospects.length,
+          totalProspects: data.totalProspects,
+          convertedProspects: data.convertedProspects,
           meetingsBooked,
           totalExpectedRevenue,
           feedback: data.feedback || '',
@@ -347,6 +407,8 @@ export default function NewReportPage() {
           callsTarget: 0,
           completion: 100, // No target, so consider it 100% complete
           prospectsCount: data.prospects.length,
+          totalProspects: data.totalProspects,
+          convertedProspects: data.convertedProspects,
           meetingsBooked,
           totalExpectedRevenue,
           feedback: data.feedback || '',
@@ -637,9 +699,9 @@ export default function NewReportPage() {
                       className="w-full bg-white dark:bg-secondary-700 text-secondary-900 dark:text-secondary-100 border-gray-300 dark:border-gray-600"
                     >
                       <option value="">Select a prospect</option>
-                      {todayCommitment?.expectedMeetings.map(meeting => (
-                        <option key={meeting.prospectId} value={meeting.prospectId}>
-                          {meeting.prospectName}
+                      {prospects.map(prospect => (
+                        <option key={prospect.id} value={prospect.id}>
+                          {prospect.name}
                         </option>
                       ))}
                     </Select>
@@ -744,15 +806,26 @@ export default function NewReportPage() {
                 <div key={field.id} className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-secondary-800">
                   <div>
                     <label className="block text-sm font-medium text-secondary-900 dark:text-secondary-100 mb-1">
-                      Prospect Name
+                      Prospect
                     </label>
-                    <Input
-                      type="text"
-                      {...register(`closures.${index}.prospectName` as const)}
-                      required
-                      className="w-full bg-white dark:bg-secondary-700 text-secondary-900 dark:text-secondary-100"
-                      placeholder="Enter prospect name"
-                    />
+                    <Select
+                      {...register(`closures.${index}.prospectId`)}
+                      onChange={(e) => {
+                        const selectedProspect = prospects.find(p => p.id === e.target.value);
+                        if (selectedProspect) {
+                          setValue(`closures.${index}.prospectName`, selectedProspect.name);
+                          setValue(`closures.${index}.closureDate`, new Date().toISOString().split('T')[0]);
+                        }
+                      }}
+                      className="w-full bg-white dark:bg-secondary-700 text-secondary-900 dark:text-secondary-100 border-gray-300 dark:border-gray-600"
+                    >
+                      <option value="">Select a prospect</option>
+                      {prospects.map(prospect => (
+                        <option key={prospect.id} value={prospect.id}>
+                          {prospect.name}
+                        </option>
+                      ))}
+                    </Select>
                   </div>
 
                   <div>

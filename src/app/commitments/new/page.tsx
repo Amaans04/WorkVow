@@ -82,30 +82,25 @@ export default function NewCommitmentPage() {
   // Fetch prospects for the user
   useEffect(() => {
     if (!auth?.userData) return;
-    const userData = auth.userData;  // Store in a const to help TypeScript understand it won't be null
+    const userData = auth.userData;
 
     const fetchProspects = async () => {
       try {
-        // Get all daily reports
-        const dailyReportsRef = collection(db, `users/${userData.uid}/reports/daily/entries`);
-        const reportsSnapshot = await getDocs(dailyReportsRef);
+        // Get all prospects from the main prospects collection
+        const prospectsRef = collection(db, `users/${userData.uid}/prospects`);
+        const prospectsQuery = query(prospectsRef, where('status', '==', 'pending'));
+        const prospectsSnapshot = await getDocs(prospectsQuery);
         
         const prospectsData: Array<{ id: string; name: string; dateAdded?: Timestamp }> = [];
         
-        // For each daily report, get its prospects
-        for (const reportDoc of reportsSnapshot.docs) {
-          const prospectsRef = collection(db, `users/${userData.uid}/reports/daily/entries/${reportDoc.id}/prospects`);
-          const prospectsQuery = query(prospectsRef, where('status', '==', 'pending'));
-          const prospectsSnapshot = await getDocs(prospectsQuery);
-          
-          prospectsSnapshot.forEach(doc => {
-            prospectsData.push({
-              id: doc.id,
-              name: doc.data().name,
-              dateAdded: doc.data().dateAdded
-            });
+        prospectsSnapshot.forEach(doc => {
+          const data = doc.data();
+          prospectsData.push({
+            id: doc.id,
+            name: data.name,
+            dateAdded: data.dateAdded
           });
-        }
+        });
         
         // Sort prospects by date added (most recent first)
         prospectsData.sort((a, b) => {
